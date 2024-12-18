@@ -25,7 +25,9 @@ urlpatterns = [
     path('jet/', include('jet.urls', 'jet')),
     path('admin/', admin.site.urls),
 
-    path('auth/', include("account.urls"))
+    path('', include("core.urls")),
+    path('auth/', include("account.urls")),
+    path('expense/', include("expense.urls")),
 ]
 
 urlpatterns += [
