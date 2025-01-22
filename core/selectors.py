@@ -1,5 +1,5 @@
 from typing import List
-from core.models import ExpenseCategory
+from core.models import ExpenseCategory, IncomeCategory
 from account.models import CustomUser
 from uuid import UUID
 
@@ -35,4 +35,38 @@ def fetch_expense_category_detail(
     """
     
     category = ExpenseCategory.objects.get(uid=category_uid, user=user)
+    return category
+
+def fetch_income_categories(
+    *,
+    user: CustomUser
+) -> List[IncomeCategory]:
+    """
+    Fetches the income categories associated with a given user.
+    Args:
+        user (CustomUser): The user whose income categories are to be fetched.
+    Returns:
+        List[IncomeCategory]: A list of income categories associated with the user.
+    """
+    
+    categories = IncomeCategory.objects.filter(user=user)
+    return categories
+
+def fetch_income_category_detail(
+    *,
+    category_uid: UUID,
+    user: CustomUser
+) -> IncomeCategory:
+    """
+    Fetches the details of an income category for a given user.
+    Args:
+        category_uid (UUID): The unique identifier of the income category.
+        user (CustomUser): The user for whom the income category is being fetched.
+    Returns:
+        IncomeCategory: The income category object corresponding to the given UID and user.
+    Raises:
+        IncomeCategory.DoesNotExist: If no income category exists with the given UID for the specified user.
+    """
+    
+    category = IncomeCategory.objects.get(uid=category_uid, user=user)
     return category

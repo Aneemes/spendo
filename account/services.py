@@ -1,12 +1,16 @@
-from django.db import transaction
-from .models import CustomUser
 from dataclasses import dataclass
+
+from django.db import transaction
 from django.utils.crypto import get_random_string
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.password_validation import validate_password
-from rest_framework.exceptions import APIException
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .helpers import check_if_email_is_taken, send_reset_password_link, generate_username_from_email
+
+from rest_framework.exceptions import APIException
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.exceptions import ValidationError as DRFValidationError
+
+from .models import CustomUser, EmailConfirmationToken
+from .helpers import check_if_email_is_taken, send_reset_password_link, generate_username_from_email, send_verification_email
 
 @transaction.atomic
 def user_signup(
@@ -15,7 +19,7 @@ def user_signup(
     email: str,
     password: str,
     confirm_password: str
-) -> str:
+) -> bool:
     """
     Registers a new user with the provided details.
     Args:
@@ -28,12 +32,6 @@ def user_signup(
     Raises:
         DjangoValidationError: If any validation error occurs during the signup process.
     """
-    @dataclass(frozen=True)
-    class UserSignupDetails:
-        full_name: str
-        username: str
-        access_token: str
-    
     if not password or not confirm_password:
         raise DjangoValidationError("Password field cannot be empty.")
     
@@ -55,6 +53,7 @@ def user_signup(
         full_name=full_name,
         username=username,
         email=email.lower(),
+        is_active=False
     )
 
     try:
@@ -64,16 +63,9 @@ def user_signup(
         raise DjangoValidationError(e.messages[0])
     user.save()
 
-    token = RefreshToken.for_user(user)
-    refresh_token = str(token)
-    access_token = str(token.access_token)
+    send_verification_email(user=user, email=email)
 
-    signup_details = UserSignupDetails(
-        full_name, username, access_token
-    )
-
-
-    return signup_details, refresh_token
+    return True
 
 @transaction.atomic
 def user_login(
@@ -101,10 +93,13 @@ def user_login(
     
     user = CustomUser.objects.get(email=email.lower())
     if user is None:
-        raise DjangoValidationError("Invalid credentials.")
+        raise DRFValidationError(detail="Invalid credentials.")
     
     if not user.check_password(password):
-        raise DjangoValidationError("Invalid credentials.")
+        raise DRFValidationError(detail="Invalid credentials.")
+    
+    if not user.is_active:
+        raise DRFValidationError(detail="Please verify your email address before logging in.")
     
     full_name = user.full_name
     username = user.username
@@ -137,8 +132,10 @@ def send_forgot_password_email(
         DjangoValidationError: If the email address is not associated with any user.
         APIException: If there is an error sending the email.
     """
-    
-    user = CustomUser.objects.get(email=email)
+    try:
+        user = CustomUser.objects.get(email=email)
+    except CustomUser.DoesNotExist:
+        raise DRFValidationError(detail="User with the provided email does not exist.")
     if user is None:
         raise DjangoValidationError("Please enter a valid email address.")
     token = get_random_string(length=64)
@@ -148,7 +145,7 @@ def send_forgot_password_email(
     username = user.username
 
     reset_link = f"http://127.0.0.1:8000/auth/reset-password/{username}/{token}"
-    email = send_reset_password_link(reset_link=reset_link, receiver_email=email)
+    email = send_reset_password_link(reset_link=reset_link, receiver_email=email, user=user)
     if email is True:
         return True
     
@@ -245,4 +242,40 @@ def change_password(
     
     user.save()
     return True
+
+@transaction.atomic
+def verify_user_email_address(*, token:str) -> bool:
+    token_object = EmailConfirmationToken.objects.get(token=token)
+    if not token_object:
+        raise DRFValidationError(detail='Email confirmation link is invalid.')
+    if token_object.has_expired:
+        token_object.delete()
+        raise DRFValidationError(detail='Confirmation email has expired. Please request a new confirmation email.')
     
+    user_instance = token_object.user
+    user_instance.is_active=True
+    user_instance.save(update_fields=['is_active'])
+
+    token_object.delete()
+
+    return True
+
+@transaction.atomic
+def resend_verification_email(*, email:str) -> bool:
+    try:
+        user_obj = CustomUser.objects.get(email=email)
+    except CustomUser.DoesNotExist:
+        print('here')
+        return True
+    print('shouldnt be here')
+    print(user_obj.is_active)
+    if user_obj.is_active:
+        raise DRFValidationError(detail="Email was already verified. Proceed to login.")
+    try:
+        token_obj = EmailConfirmationToken.objects.filter(user=user_obj).first()
+        if token_obj:
+            token_obj.delete()
+    except EmailConfirmationToken.DoesNotExist:
+        send_verification_email(user=user_obj, email=email)
+    send_verification_email(user=user_obj, email=email)
+    return True

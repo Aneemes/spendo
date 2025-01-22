@@ -7,8 +7,11 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import IsAuthenticated
 
-from .services import create_expense_category, update_expense_category, delete_expense_category
-from .selectors import fetch_expense_categories, fetch_expense_category_detail
+from .services import (
+    create_expense_category, update_expense_category, delete_expense_category,
+    create_income_category, update_income_category, delete_income_category
+)
+from .selectors import fetch_expense_categories, fetch_expense_category_detail, fetch_income_categories, fetch_income_category_detail
 
 class CreateExpenseCategoryAPIview(APIView):
     """
@@ -303,7 +306,6 @@ class DeleteExpenseCategoryAPIView(APIView):
                 user=request.user,
                 category_uid=kwargs.get("category_uid")
             )
-            expense_category.delete()
         except DjangoValidationError as e:
             return Response(
                 {
@@ -324,6 +326,223 @@ class DeleteExpenseCategoryAPIView(APIView):
             {
                 "success": True,
                 "message": "Expense category deleted successfully"
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+class CreateIncomeCategoryAPIview(APIView):
+    permission_classes = [IsAuthenticated]
+
+    class CreateIncomeCategoryInputSerializer(serializers.Serializer):
+        title = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+        description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+        color_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    
+    class CreateIncomeCategoryOutputSerializer(serializers.Serializer):
+        uid = serializers.UUIDField(read_only=True)
+        title = serializers.CharField(read_only=True)
+        description = serializers.CharField(read_only=True)
+        color_code = serializers.CharField(read_only=True)
+
+    @transaction.atomic
+    def post(self, request, *args, **kwargs):
+        input_serializer = self.CreateIncomeCategoryInputSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        try:
+            income_category_details = create_income_category(
+                **input_serializer.validated_data,
+                user=request.user
+            )
+        except DjangoValidationError as e:
+            return Response(
+                {
+                    "success": False,
+                    "message": e.message
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except DRFValidationError as e:
+            return Response(
+                {
+                    "success": False,
+                    "message": e.detail
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        output_serializer = self.CreateIncomeCategoryOutputSerializer(income_category_details)
+        return Response(
+            {
+                "success": True,
+                "message": "Income category created successfully",
+                "data": output_serializer.data
+            },
+            status=status.HTTP_201_CREATED
+        )
+    
+
+class UpdateIncomeCategoryAPIview(APIView):
+    permission_classes = [IsAuthenticated]
+
+    class UpdateIncomeCategoryInputSerializer(serializers.Serializer):
+        title = serializers.CharField(required=True)
+        description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+        color_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    
+    class UpdateIncomeCategoryOutputSerializer(serializers.Serializer):
+        uid = serializers.UUIDField(read_only=True)
+        title = serializers.CharField(read_only=True)
+        description = serializers.CharField(read_only=True)
+        color_code = serializers.CharField(read_only=True)
+
+    @transaction.atomic
+    def patch(self, request, *args, **kwargs):
+        input_serializer = self.UpdateIncomeCategoryInputSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        try:
+            income_category_details = update_income_category(
+                **input_serializer.validated_data,
+                category_uid=kwargs.get("category_uid"),
+                user=request.user
+            )
+        except DjangoValidationError as e:
+            return Response(
+                {
+                    "success": False,
+                    "message": e.message
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except DRFValidationError as e:
+            return Response(
+                {
+                    "success": False,
+                    "message": e.detail
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        output_serializer = self.UpdateIncomeCategoryOutputSerializer(income_category_details)
+        return Response(
+            {
+                "success": True,
+                "message": "Income category updated successfully",
+                "data": output_serializer.data
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+class ListIncomeCategoryAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    class ListIncomeCategoryOutputSerializer(serializers.Serializer):
+        uid = serializers.UUIDField(read_only=True)
+        title = serializers.CharField(read_only=True)
+        description = serializers.CharField(read_only=True)
+        color_code = serializers.CharField(read_only=True)
+        created_at = serializers.DateTimeField(read_only=True)
+        updated_at = serializers.DateTimeField(read_only=True)
+
+    def get(self, request, *args, **kwargs):
+        try:
+            income_categories = fetch_income_categories(user=request.user)
+        except DjangoValidationError as e:
+            return Response(
+                {
+                    "success": False,
+                    "message": e.message
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except DRFValidationError as e:
+            return Response(
+                {
+                    "success": False,
+                    "message": e.detail
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        output_serializer = self.ListIncomeCategoryOutputSerializer(income_categories, many=True)
+        return Response(
+            {
+                "success": True,
+                "message": "Income categories fetched successfully",
+                "data": output_serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+
+class RetrieveIncomeCategoryAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    class RetrieveIncomeCategoryOutputSerializer(serializers.Serializer):
+        uid = serializers.UUIDField(read_only=True)
+        title = serializers.CharField(read_only=True)
+        description = serializers.CharField(read_only=True)
+        color_code = serializers.CharField(read_only=True)
+        created_at = serializers.DateTimeField(read_only=True)
+        updated_at = serializers.DateTimeField(read_only=True)
+    
+    def get(self, request, *args, **kwargs):
+        try:
+            income_category = fetch_income_category_detail(
+                user=request.user,
+                category_uid=kwargs.get("category_uid")
+            )
+        except DjangoValidationError as e:
+            return Response(
+                {
+                    "success": False,
+                    "message": e.message
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except DRFValidationError as e:
+            return Response(
+                {
+                    "success": False,
+                    "message": e.detail
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        output_serializer = self.RetrieveIncomeCategoryOutputSerializer(income_category)
+        return Response(
+            {
+                "success": True,
+                "message": "Income category fetched successfully",
+                "data": output_serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+    
+class DeleteIncomeCategoryAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, *args, **kwargs):
+        try:
+            income_category = delete_income_category(
+                user=request.user,
+                category_uid=kwargs.get("category_uid")
+            )
+        except DjangoValidationError as e:
+            return Response(
+                {
+                    "success": False,
+                    "message": e.message
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except DRFValidationError as e:
+            return Response(
+                {
+                    "success": False,
+                    "message": e.detail
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(
+            {
+                "success": True,
+                "message": "Income category deleted successfully"
             },
             status=status.HTTP_200_OK
         )

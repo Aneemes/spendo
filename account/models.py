@@ -1,5 +1,8 @@
+from datetime import timedelta
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.conf import settings
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from .managers import CustomUserManager
 from core.models_mixin import IdentifierTimeStampAbstractModel 
@@ -29,3 +32,24 @@ class CustomUser(AbstractUser, IdentifierTimeStampAbstractModel):
 
     def __str__(self):
         return self.email
+    
+class EmailConfirmationToken(models.Model):
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="email_confirmation_token")
+    created_time = models.DateTimeField(auto_now=True)
+    token = models.CharField(max_length=64)
+    email = models.EmailField(max_length=255, null=True)
+
+    class Meta:
+        verbose_name = "Email Confirmation Token"
+        verbose_name_plural = "Email Confirmation Tokens"
+        ordering = ["-created_time"]
+
+    def __str__(self):
+        return self.user.username + self.email
+    
+    @property
+    def has_expired(self) -> bool:
+        now = timezone.now()
+        expiry_time = self.created_time + timedelta(minutes=5)
+        return now > expiry_time

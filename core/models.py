@@ -32,3 +32,17 @@ class ExpenseCategory(IdentifierTimeStampAbstractModel):
     def __str__(self):
         return self.title
 
+class IncomeCategory(IdentifierTimeStampAbstractModel):
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    colour_code = models.CharField(max_length=10, default="#000000")
+    user = models.ForeignKey("account.CustomUser", on_delete=models.CASCADE)
+
+    class Meta:
+        db_table = "income_category"
+        verbose_name = "Income Category"
+        verbose_name_plural = "Income Categories"
+        unique_together = ('title', 'user')
+
+    def __str__(self):
+        return self.title

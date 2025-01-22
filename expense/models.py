@@ -22,12 +22,10 @@ class Expense(IdentifierTimeStampAbstractModel):
     description = models.TextField(blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     category = models.ForeignKey("core.ExpenseCategory", on_delete=models.SET_NULL, null=True, blank=True)
-    user = models.ForeignKey("account.CustomUser", on_delete=models.CASCADE)
+    user = models.ForeignKey("account.CustomUser", on_delete=models.CASCADE, related_name='expense')
+    date = models.DateField()
 
     class Meta:
         db_table = "expenses"
         verbose_name = "Expense"
         verbose_name_plural = "Expenses"
-
-    def __str__(self):
-        return self.amount + " - " + self.category.title

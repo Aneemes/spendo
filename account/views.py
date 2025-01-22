@@ -9,7 +9,7 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 from .services import (
-    user_signup, user_login, send_forgot_password_email, reset_password, change_password
+    user_signup, user_login, send_forgot_password_email, reset_password, change_password, verify_user_email_address, resend_verification_email
 )
 
 
@@ -39,19 +39,6 @@ class UserSignUpAPIView(APIView):
         password = serializers.CharField(write_only=True, required=True)
         confirm_password = serializers.CharField(write_only=True, required=True)
 
-    class UserSignUpOutputSerializer(serializers.Serializer):
-        """
-        Serializer for sending the response data after successful sign-up.
-        
-        Fields:
-            full_name (str): The full name of the user.
-            username (str): The username of the user.
-            access_token (str): The access token for the user.
-        """
-        full_name = serializers.CharField(read_only=True)
-        username = serializers.CharField(read_only=True)
-        access_token = serializers.CharField(read_only=True)
-
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         """
@@ -72,10 +59,8 @@ class UserSignUpAPIView(APIView):
         input_serializer.is_valid(raise_exception=True)
 
         try:
-            # Call user_signup function to create a new user
-            signup_details, refresh_token = user_signup(**input_serializer.validated_data)
+            signup_status = user_signup(**input_serializer.validated_data)
         except DRFValidationError as e:
-            # Handle custom DRF validation error
             return Response(
                 {
                     "success": False,
@@ -84,7 +69,6 @@ class UserSignUpAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         except DjangoValidationError as e:
-            # Handle Django validation error
             return Response(
                 {
                     "success": False,
@@ -92,30 +76,14 @@ class UserSignUpAPIView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        # Serialize the user details and prepare the response
-        output_serializer = self.UserSignUpOutputSerializer(signup_details)
-        response = Response(
+        return Response(
             {
                 "success": True,
                 "message": "User signup successful",
-                "data": output_serializer.data,
+                # "data": output_serializer.data,
             },
             status=status.HTTP_201_CREATED,
         )
-
-        # Set a refresh token as a secure cookie
-        response.set_cookie(
-            "refresh_token",
-            refresh_token,
-            max_age=settings.REFRESH_COOKIE_MAX_AGE,
-            httponly=True,
-            samesite="none",
-            secure=False,
-        )
-
-        return response
-
 
 class UserLoginAPIView(APIView):
     """
@@ -419,7 +387,7 @@ class ResetPasswordAPIView(APIView):
         Serializer for handling password reset input.
 
         Fields:
-            username (str): The username of the user requesting the password reset.
+            username (str): The username of the user requesting the password reset
             token (str): The token provided for password reset verification.
             password (str): The new password to be set.
             confirm_password (str): Confirmation of the new password.
@@ -445,7 +413,7 @@ class ResetPasswordAPIView(APIView):
             DRFValidationError: If the input data is invalid according to DRF validation.
             DjangoValidationError: If the input data is invalid according to Django validation.
         """
-        input_serializer = self.ResetPasswordInputSerializer(serializers.Serializer)
+        input_serializer = self.ResetPasswordInputSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
 
         try:
@@ -559,4 +527,72 @@ class ChangePasswordAPIView(APIView):
                 "message": "Password changed successfully."
             },
             status=status.HTTP_200_OK
+        )
+
+class VerifyEmailAddressAPIView(APIView):
+
+    class VerifyEmailAddressInputSerializer(serializers.Serializer):
+        token = serializers.CharField(write_only=True)
+    
+    @transaction.atomic
+    def post(self, request, *args, **kwargs):
+        input_serializer = self.VerifyEmailAddressInputSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        try:
+            email_verification_status = verify_user_email_address(
+                **input_serializer.validated_data
+            )
+        except DjangoValidationError as e:
+            return Response(
+                {
+                    'success': False,
+                    'message': e.message
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
+        except DRFValidationError as e:
+            return Response(
+                {
+                    'success': False,
+                    'message': e.detail
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(
+            {
+                'success': True,
+                'message': 'Email address has been verified.'
+            }
+        )
+    
+class ResendVerificationEmailAPIView(APIView):
+
+    class ResendVerificationEmailInputSerializer(serializers.Serializer):
+        email = serializers.EmailField(write_only=True)
+
+    @transaction.atomic
+    def post(self, request, *args, **kwargs):
+        input_serializer = self.ResendVerificationEmailInputSerializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        try:
+            resend_verification_email(
+                **input_serializer.validated_data
+            )
+        except DjangoValidationError as e:
+            return Response(
+                {
+                    'success': False,
+                    'message': e.message
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
+        except DRFValidationError as e:
+            return Response(
+                {
+                    'success': False,
+                    'message': e.detail
+                }, status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(
+            {
+                'success': True,
+                'message': 'Verification email sent. Please check your inbox.'
+            }
         )

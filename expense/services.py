@@ -114,3 +114,4 @@ def delete_user_expense(
         raise DjangoValidationError("Expense not found")
     expense_instance.delete()
     return True
+

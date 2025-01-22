@@ -276,7 +276,7 @@ class FetchExpenseDetailAPIView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    class RetrieveExpenseOutputSerializer(serializers.Serializer):
+    class FetchExpenseDetailOutputSerializer(serializers.Serializer):
         uid = serializers.UUIDField(read_only=True)
         title = serializers.CharField(read_only=True)
         description = serializers.CharField(read_only=True)
@@ -309,7 +309,7 @@ class FetchExpenseDetailAPIView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-        output_serializer = self.RetrieveExpenseOutputSerializer(expense_details)
+        output_serializer = self.FetchExpenseDetailOutputSerializer(expense_details)
         return Response(
             {
                 "success": True,
