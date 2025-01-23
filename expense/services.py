@@ -5,6 +5,7 @@ from typing import List
 from core.models import ExpenseCategory
 from account.models import CustomUser
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.exceptions import ObjectDoesNotExist
 
 @transaction.atomic
 def create_user_expense(
@@ -31,8 +32,9 @@ def create_user_expense(
     Raises:
         DjangoValidationError: If the specified category is not found for the user.
     """
-    category_instance = ExpenseCategory.objects.get(uid=category, user=user)
-    if category_instance is None:
+    try:
+        category_instance = ExpenseCategory.objects.get(uid=category, user=user)
+    except ExpenseCategory.DoesNotExist:
         raise DjangoValidationError("Category not found")
     user_expense = category_instance.expense_set.create(
         title=title,
@@ -67,9 +69,10 @@ def update_user_expense(
     Returns:
         bool: True if the expense was successfully updated.
     """
-    expense_instance = user.expense_set.get(uid=expense_uid)
-    if expense_instance is None:
-        raise DjangoValidationError("Expense not found")
+    try:
+        expense_instance = user.expense_set.get(uid=expense_uid)
+    except ObjectDoesNotExist:
+        raise DjangoValidationError("Expense not found.")
     if title is not None:
         expense_instance.title = title
     if description is not None:
@@ -109,9 +112,10 @@ def delete_user_expense(
     Raises:
         DjangoValidationError: If the expense with the given UID is not found.
     """
-    expense_instance = user.expense_set.get(uid=expense_uid)
-    if expense_instance is None:
-        raise DjangoValidationError("Expense not found")
+    try:
+        expense_instance = user.expense_set.get(uid=expense_uid)
+    except ObjectDoesNotExist:
+        raise DjangoValidationError("Expense not found.")
     expense_instance.delete()
     return True
 

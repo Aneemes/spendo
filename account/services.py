@@ -91,9 +91,10 @@ def user_login(
         username: str
         access_token: str
     
-    user = CustomUser.objects.get(email=email.lower())
-    if user is None:
-        raise DRFValidationError(detail="Invalid credentials.")
+    try:
+        user = CustomUser.objects.get(email=email.lower())
+    except CustomUser.DoesNotExist:
+        raise DRFValidationError(detail="User with the provided email does not exist.")
     
     if not user.check_password(password):
         raise DRFValidationError(detail="Invalid credentials.")
@@ -176,9 +177,9 @@ def reset_password(
         DjangoValidationError: If the password does not meet validation criteria.
         DjangoValidationError: If there is an error during saving the user.
     """
-    
-    user = CustomUser.objects.get(username=username)
-    if not user:
+    try:
+        user = CustomUser.objects.get(username=username)
+    except CustomUser.DoesNotExist:
         raise DjangoValidationError("User doesn't exist.")
     if user.password != token:
         raise DjangoValidationError("Invalid token.")
@@ -245,8 +246,21 @@ def change_password(
 
 @transaction.atomic
 def verify_user_email_address(*, token:str) -> bool:
-    token_object = EmailConfirmationToken.objects.get(token=token)
-    if not token_object:
+    """
+    Verifies a user's email address using a confirmation token.
+    This function validates the email confirmation token, checks for expiration,
+    and activates the associated user account if valid.
+    Args:
+        token (str): The email confirmation token string.
+    Returns:
+        bool: True if verification is successful.
+    Raises:
+        DRFValidationError: If token is invalid or expired.
+        EmailConfirmationToken.DoesNotExist: If token not found.
+    """
+    try:
+        token_object = EmailConfirmationToken.objects.get(token=token)
+    except EmailConfirmationToken.DoesNotExist:
         raise DRFValidationError(detail='Email confirmation link is invalid.')
     if token_object.has_expired:
         token_object.delete()
@@ -262,13 +276,30 @@ def verify_user_email_address(*, token:str) -> bool:
 
 @transaction.atomic
 def resend_verification_email(*, email:str) -> bool:
+    """
+    Resends verification email to the specified email address.
+
+    This function handles the process of resending a verification email to users who haven't
+    verified their email address yet. It checks if the user exists, if they're already
+    verified, and manages the verification token before sending a new email.
+
+    Args:
+        email (str): The email address to resend verification to.
+
+    Returns:
+        bool: True if the email was sent successfully or if the user doesn't exist.
+
+    Raises:
+        DRFValidationError: If the user's email is already verified.
+
+    Example:
+        >>> resend_verification_email(email="user@example.com")
+        True
+    """
     try:
         user_obj = CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
-        print('here')
         return True
-    print('shouldnt be here')
-    print(user_obj.is_active)
     if user_obj.is_active:
         raise DRFValidationError(detail="Email was already verified. Proceed to login.")
     try:

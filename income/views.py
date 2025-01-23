@@ -13,6 +13,29 @@ from .services import create_income, update_income, delete_user_income
 from .selectors import get_user_income_details, get_user_income_list
 
 class CreateIncomeAPIView(APIView):
+    """
+    API view for creating income records.
+    This view handles POST requests to create new income entries. It requires user authentication
+    and validates the input data using CreateIncomeInputSerializer.
+    Attributes:
+        permission_classes (list): List containing IsAuthenticated to ensure only authenticated users can access
+        CreateIncomeInputSerializer (Serializer): Inner serializer class that defines the expected input fields
+    Methods:
+        post(request, *args, **kwargs): Creates a new income record
+    Input Fields:
+        title (str, optional): Title of the income entry
+        amount (decimal, required): Monetary value of the income with 2 decimal places
+        date (date, required): Date of the income
+        description (str, optional): Additional details about the income
+        category_uid (UUID, optional): Unique identifier for the income category
+    Returns:
+        Response: JSON response with success status and message
+            - 201: Income created successfully
+            - 400: Validation error occurred
+    Raises:
+        DjangoValidationError: If income creation fails validation
+        DRFValidationError: If request data validation fails
+    """
     permission_classes = [IsAuthenticated]
 
     class CreateIncomeInputSerializer(serializers.Serializer):
@@ -57,6 +80,29 @@ class CreateIncomeAPIView(APIView):
         )
 
 class UpdateIncomeAPIView(APIView):
+    """
+    API view for updating an existing income record.
+    This view requires user authentication and handles the update of income records
+    with atomic transaction support.
+    Attributes:
+        permission_classes (list): List containing IsAuthenticated permission class.
+    Methods:
+        put(request, *args, **kwargs): Handles PUT requests to update income records.
+    Input Fields:
+        - title (str, optional): The title of the income record
+        - amount (decimal, required): The monetary amount of income (max 10 digits, 2 decimal places)
+        - date (date, required): The date of the income
+        - description (str, optional): Additional details about the income
+        - category_uid (UUID, optional): Unique identifier for the income category
+    Returns:
+        Response: A JSON response with:
+            - success (bool): Indicates if the operation was successful
+            - message (str): Description of the operation result
+    Status Codes:
+        - 200: Income successfully updated
+        - 400: Invalid input data or validation error
+        - 401: Authentication credentials not provided
+    """
     permission_classes = [IsAuthenticated]
 
     class UpdateIncomeInputSerializer(serializers.Serializer):
@@ -99,6 +145,37 @@ class UpdateIncomeAPIView(APIView):
         )
 
 class FetchIncomeListAPIView(APIView):
+    """
+    A view for fetching a paginated list of income records.
+    This API view requires authentication and provides various filtering options for retrieving income records.
+    It uses pagination to limit the number of records returned per request.
+    Attributes:
+        permission_classes (list): List containing IsAuthenticated permission class.
+        page_size (int): Number of records per page (default: 20).
+        max_page_size (int): Maximum allowed page size (default: 100).
+    Query Parameters:
+        title (str, optional): Filter incomes by title.
+        start_date (date, optional): Filter incomes from this date.
+        end_date (date, optional): Filter incomes until this date.
+        category_uid (UUID, optional): Filter incomes by category UUID.
+        date_filter (str, optional): Predefined date filter option.
+        page (int, optional): Page number for pagination.
+        page_size (int, optional): Number of records per page (1-100).
+    Returns:
+        Response: A JSON response containing:
+            - success (bool): Operation success status
+            - message (str): Success/error message
+            - count (int): Total number of records
+            - next (str): URL for next page
+            - previous (str): URL for previous page
+            - data (list): List of income records with their details
+    Raises:
+        DjangoValidationError: If there's an error in Django validation
+        DRFValidationError: If there's an error in DRF validation
+    Examples:
+        GET /api/income/list/
+        GET /api/income/list/?title=Salary&start_date=2023-01-01
+    """
     permission_classes = [IsAuthenticated]
 
     class FetchIncomeListOutputSerializer(serializers.Serializer):
@@ -173,6 +250,37 @@ class FetchIncomeListAPIView(APIView):
         return Response(response_data, status=status.HTTP_200_OK)
 
 class FetchIncomeDetailAPIView(APIView):
+    """
+    API endpoint to fetch detailed information about a specific income record.
+    This view requires authentication and handles the retrieval of income details
+    for a specific income record identified by its UUID.
+    Attributes:
+        permission_classes (list): List containing IsAuthenticated permission class
+        RetrieveIncomeDetailOutputSerializer (Serializer): Inner serializer class for formatting output data
+    Methods:
+        get(request, *args, **kwargs): Handles GET requests to fetch income details
+    Returns:
+        Response: A JSON response containing:
+            - success (bool): Indicates if the operation was successful
+            - message (str): Description of the operation result
+            - data (dict): Serialized income details including:
+                - uid (UUID): Unique identifier of the income
+                - title (str): Title of the income
+                - description (str): Description of the income
+                - date (date): Date of the income
+                - amount (decimal): Amount of the income
+                - category (UUID): Category identifier
+                - category_title (str): Title of the category
+                - color_code (str): Color code for the category
+                - created_at (datetime): Creation timestamp
+                - updated_at (datetime): Last update timestamp
+    Raises:
+        DjangoValidationError: If there's an error in Django validation
+        DRFValidationError: If there's an error in DRF validation
+    Status Codes:
+        200: Successfully retrieved income details
+        400: Bad request due to validation errors
+    """
     permission_classes = [IsAuthenticated]
 
     class RetrieveIncomeDetailOutputSerializer(serializers.Serializer):
@@ -220,6 +328,26 @@ class FetchIncomeDetailAPIView(APIView):
         )
     
 class DeleteIncomeAPIView(APIView):
+    """
+    API view for deleting a user's income record.
+    This view requires user authentication and handles the deletion of income records
+    through an atomic transaction.
+    Attributes:
+        permission_classes (list): List containing IsAuthenticated permission class to ensure
+            only authenticated users can access this view.
+    Methods:
+        delete(request, *args, **kwargs): Handles DELETE requests to remove income records.
+    Returns:
+        Response: A JSON response with:
+            - success (bool): Indicates if operation was successful
+            - message (str): Description of the operation result
+            Status codes:
+                - 200: Successful deletion
+                - 400: Invalid request or validation error
+    Raises:
+        DjangoValidationError: When validation fails at the Django model level
+        DRFValidationError: When validation fails at the DRF level
+    """
     permission_classes = [IsAuthenticated]
 
     @transaction.atomic

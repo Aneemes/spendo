@@ -530,6 +530,30 @@ class ChangePasswordAPIView(APIView):
         )
 
 class VerifyEmailAddressAPIView(APIView):
+    """
+    API View for verifying user email addresses.
+    This view handles the email verification process by accepting a token and validating it.
+    The actual verification is performed by the `verify_user_email_address` function.
+    Attributes:
+        VerifyEmailAddressInputSerializer: Nested serializer class that validates the input token
+    Methods:
+        post: Handles POST requests for email verification
+    Request Body:
+            "token": "verification_token_string"
+    Returns:
+        On success:
+                "success": true,
+                "message": "Email address has been verified."
+        On failure:
+                "success": false,
+                "message": "Error message details"
+    Status Codes:
+        200: Email verification successful
+        400: Invalid token or verification failed
+    Raises:
+        DjangoValidationError: When token validation fails
+        DRFValidationError: When request data validation fails
+    """
 
     class VerifyEmailAddressInputSerializer(serializers.Serializer):
         token = serializers.CharField(write_only=True)
@@ -564,6 +588,29 @@ class VerifyEmailAddressAPIView(APIView):
         )
     
 class ResendVerificationEmailAPIView(APIView):
+    """
+    A ViewSet for resending verification emails to users.
+    This view accepts POST requests with an email address and triggers the resending
+    of a verification email to that address. It handles both Django and DRF validation
+    errors gracefully.
+    Attributes:
+        ResendVerificationEmailInputSerializer: Inner serializer class that validates
+            the email field in the request data.
+    Methods:
+        post(request, *args, **kwargs): Handles the POST request to resend verification email.
+    Request Body:
+            "email": "user@example.com"  # Email address to send verification to
+    Returns:
+        200 OK: {
+            "success": true,
+            "message": "Verification email sent. Please check your inbox."
+        400 BAD REQUEST: {
+            "success": false,
+            "message": "<error message>"
+    Raises:
+        DjangoValidationError: If there's a validation error from Django
+        DRFValidationError: If there's a validation error from DRF
+    """
 
     class ResendVerificationEmailInputSerializer(serializers.Serializer):
         email = serializers.EmailField(write_only=True)

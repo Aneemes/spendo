@@ -382,6 +382,34 @@ class CreateIncomeCategoryAPIview(APIView):
     
 
 class UpdateIncomeCategoryAPIview(APIView):
+    """
+    API endpoint to update an existing income category.
+    This view allows authenticated users to update the details of a specific income category.
+    The update can include the title, description, and color code of the category.
+    Methods:
+        patch: Updates an income category with the provided data.
+    Input Serializer Fields:
+        title (str): The new title for the income category.
+        description (str, optional): A description of the income category.
+        color_code (str, optional): A color code for visual representation.
+    Output Serializer Fields:
+        uid (UUID): The unique identifier of the income category.
+        title (str): The updated title of the income category.
+        description (str): The updated description of the income category.
+        color_code (str): The updated color code of the income category.
+    URL Parameters:
+        category_uid (UUID): The unique identifier of the income category to update.
+    Returns:
+        Response: A JSON response containing:
+            - success (bool): Indicates if the operation was successful.
+            - message (str): A description of the operation result.
+            - data (dict): The updated income category details.
+    Raises:
+        DjangoValidationError: If the input data fails model validation.
+        DRFValidationError: If the input data fails serializer validation.
+    Permission Classes:
+        IsAuthenticated: Only authenticated users can access this endpoint.
+    """
     permission_classes = [IsAuthenticated]
 
     class UpdateIncomeCategoryInputSerializer(serializers.Serializer):
@@ -432,6 +460,34 @@ class UpdateIncomeCategoryAPIview(APIView):
         )
 
 class ListIncomeCategoryAPIView(APIView):
+    """
+    A view for listing income categories.
+    This API view allows authenticated users to retrieve a list of their income categories.
+    Attributes:
+        permission_classes (list): List containing IsAuthenticated permission class.
+        ListIncomeCategoryOutputSerializer (class): Nested serializer class for output data format.
+    Returns:
+        Response: A JSON response containing:
+            - success (bool): True if operation was successful, False otherwise
+            - message (str): Description of the operation result
+            - data (list): List of income categories with their details if successful
+    Raises:
+        DjangoValidationError: If there's an error in Django validation
+        DRFValidationError: If there's an error in DRF validation
+    Response Format:
+            "success": bool,
+            "message": str,
+            "data": [
+                    "uid": uuid,
+                    "title": str,
+                    "description": str,
+                    "color_code": str,
+                    "created_at": datetime,
+                    "updated_at": datetime
+                ...
+            ]
+        }
+    """
     permission_classes = [IsAuthenticated]
 
     class ListIncomeCategoryOutputSerializer(serializers.Serializer):
@@ -472,6 +528,29 @@ class ListIncomeCategoryAPIView(APIView):
         )
 
 class RetrieveIncomeCategoryAPIView(APIView):
+    """
+    API view for retrieving a specific income category.
+    This view requires user authentication and provides detailed information about a single income category.
+    Attributes:
+        permission_classes (list): List containing IsAuthenticated permission class.
+    Methods:
+        get(request, *args, **kwargs): Retrieves the income category details.
+    Output Serializer Fields:
+        - uid (UUID): Unique identifier of the income category
+        - title (str): Title of the income category
+        - description (str): Description of the income category
+        - color_code (str): Color code associated with the category
+        - created_at (datetime): Timestamp of category creation
+        - updated_at (datetime): Timestamp of last update
+    Returns:
+        Response: JSON response containing:
+            - success (bool): Indicates if the request was successful
+            - message (str): Description of the operation result
+            - data (dict): Serialized income category data
+    Raises:
+        DjangoValidationError: If there's an error validating the category data
+        DRFValidationError: If there's an error in the API validation
+    """
     permission_classes = [IsAuthenticated]
 
     class RetrieveIncomeCategoryOutputSerializer(serializers.Serializer):
@@ -515,6 +594,24 @@ class RetrieveIncomeCategoryAPIView(APIView):
         )
     
 class DeleteIncomeCategoryAPIView(APIView):
+    """
+    API endpoint for deleting an income category.
+    This view handles the deletion of income categories for authenticated users.
+    It requires a category_uid parameter to identify the category to be deleted.
+    Permissions:
+        - User must be authenticated
+    Args:
+        request: The HTTP request object
+        *args: Additional positional arguments
+        **kwargs: Additional keyword arguments, must contain 'category_uid'
+    Returns:
+        Response: A JSON response containing:
+            - success (bool): Indicates if the operation was successful
+            - message (str): A descriptive message about the operation result
+    Raises:
+        DjangoValidationError: If there's a validation error in the deletion process
+        DRFValidationError: If there's a DRF-specific validation error
+    """
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, *args, **kwargs):

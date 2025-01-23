@@ -14,8 +14,10 @@ def fetch_expense_categories(
     Returns:
         List[ExpenseCategory]: A list of expense categories associated with the user.
     """
-    
-    categories = ExpenseCategory.objects.filter(user=user)
+    try:
+        categories = ExpenseCategory.objects.filter(user=user)
+    except ExpenseCategory.DoesNotExist:
+        return None
     return categories
 
 def fetch_expense_category_detail(
@@ -33,8 +35,10 @@ def fetch_expense_category_detail(
     Raises:
         ExpenseCategory.DoesNotExist: If no expense category exists with the given UID for the specified user.
     """
-    
-    category = ExpenseCategory.objects.get(uid=category_uid, user=user)
+    try:
+        category = ExpenseCategory.objects.get(uid=category_uid, user=user)
+    except ExpenseCategory.DoesNotExist:
+        return None
     return category
 
 def fetch_income_categories(
@@ -48,8 +52,10 @@ def fetch_income_categories(
     Returns:
         List[IncomeCategory]: A list of income categories associated with the user.
     """
-    
-    categories = IncomeCategory.objects.filter(user=user)
+    try:
+        categories = IncomeCategory.objects.filter(user=user)
+    except IncomeCategory.DoesNotExist:
+        return None
     return categories
 
 def fetch_income_category_detail(
@@ -67,6 +73,8 @@ def fetch_income_category_detail(
     Raises:
         IncomeCategory.DoesNotExist: If no income category exists with the given UID for the specified user.
     """
-    
-    category = IncomeCategory.objects.get(uid=category_uid, user=user)
+    try:
+        category = IncomeCategory.objects.get(uid=category_uid, user=user)
+    except IncomeCategory.DoesNotExist:
+        return None
     return category

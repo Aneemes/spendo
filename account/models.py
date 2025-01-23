@@ -34,6 +34,22 @@ class CustomUser(AbstractUser, IdentifierTimeStampAbstractModel):
         return self.email
     
 class EmailConfirmationToken(models.Model):
+    """
+    A model representing an email confirmation token for user account verification.
+    This model stores tokens used for email verification process, linking them to specific users
+    and email addresses. Each token has a limited validity period of 5 minutes from creation.
+    Attributes:
+        user (ForeignKey): Reference to the user model requiring email confirmation.
+        created_time (DateTimeField): Timestamp of token creation, auto-set on save.
+        token (CharField): The actual confirmation token string, max length 64 characters.
+        email (EmailField): The email address to be confirmed, max length 255 characters.
+    Properties:
+        has_expired (bool): Indicates if the token has exceeded its 5-minute validity period.
+    Meta:
+        verbose_name (str): Human-readable singular name for the model.
+        verbose_name_plural (str): Human-readable plural name for the model.
+        ordering (list): Default ordering by creation time in descending order.
+    """
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="email_confirmation_token")
     created_time = models.DateTimeField(auto_now=True)

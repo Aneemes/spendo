@@ -62,11 +62,10 @@ def update_expense_category(
     Raises:
         DjangoValidationError: If the category is not found or if validation fails.
     """
-    
-    category = ExpenseCategory.objects.filter(uid=category_uid, user=user).first()
-    print(category)
-    if category is None:
-        raise DjangoValidationError("Category not found")
+    try:
+        category = ExpenseCategory.objects.get(uid=category_uid, user=user)
+    except ExpenseCategory.DoesNotExist:
+        raise DjangoValidationError("Category not found.")
 
     if title is not None:
         category.title = title
@@ -166,10 +165,9 @@ def update_income_category(
     Raises:
         DjangoValidationError: If the category is not found or if validation fails.
     """
-    
-    category = IncomeCategory.objects.filter(uid=category_uid, user=user).first()
-    print(category)
-    if category is None:
+    try:
+        category = IncomeCategory.objects.get(uid=category_uid, user=user)
+    except IncomeCategory.DoesNotExist:
         raise DjangoValidationError("Category not found.")
 
     if title is not None:
