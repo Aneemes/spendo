@@ -11,9 +11,11 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 import os
+import json
 from pathlib import Path
 from datetime import timedelta
 from django.utils.translation import gettext_lazy as _
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,12 +25,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-!j6p1)+nj!s*u-djchq&k(0n*zh%lkwq687eh*sg-&r&j%-w^h'
+SECRET_KEY = config("SECRET_KEY")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ["127.0.0.1", ".vercel.app", ".now.sh"]
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", "").split(",")
 
 # Application definition
 
@@ -178,7 +179,7 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,
+    "SIGNING_KEY": config('SECRET_KEY'),
 }
 
 REFRESH_COOKIE_MAX_AGE = 31536000
@@ -195,57 +196,22 @@ REST_FRAMEWORK = {
 # }
 
 
-CORS_ALLOW_ALL_ORIGINS = True
 
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "https://localhost:3000"
-]
+CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL_ORIGINS", "False") == "True"
+CORS_ALLOW_CREDENTIALS = config("CORS_ALLOW_CREDENTIALS", "False") == "True"
+CORS_ALLOWED_ORIGINS = json.loads(config("CORS_ALLOWED_ORIGINS", "[]"))
+CORS_ALLOW_HEADERS = json.loads(config("CORS_ALLOW_HEADERS", "[]"))
+CORS_ALLOW_METHODS = json.loads(config("CORS_ALLOW_METHODS", "[]"))
 
+INTERNAL_IPS = json.loads(config("INTERNAL_IPS", "[]"))
+CSRF_TRUSTED_ORIGINS = json.loads(config("CSRF_TRUSTED_ORIGINS", "[]"))
 
-CORS_ALLOW_HEADERS = [
-    "Set-Cookie",
-    "Access-Control-Allow-Origin",
-    "accept",
-    "accept-encoding",
-    "authorization",
-    "content-type",
-    "dnt",
-    "origin",
-    "user-agent",
-    "x-csrftoken",
-    "x-requested-with",
-]
+EMAIL_BACKEND = config("EMAIL_BACKEND")
+EMAIL_HOST = config("EMAIL_HOST")
+EMAIL_PORT = int(config("EMAIL_PORT", 587))
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", "False") == "True"
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
 
-CORS_ALLOW_METHODS = [
-    "DELETE",
-    "GET",
-    "OPTIONS",
-    "PATCH",
-    "POST",
-    "PUT",
-]
-
-
-INTERNAL_IPS = [
-    "http://127.0.0.1",
-    "http://localhost:3000",
-    "http://localhost",
-]
-
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:3001"
-]
-
-
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = os.environ.get('EMAIL_HOST_USER')
-
-FRONTEND_URL = os.environ.get('FRONTEND_URL')
+FRONTEND_URL = config("FRONTEND_URL")
