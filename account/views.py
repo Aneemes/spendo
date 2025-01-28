@@ -146,7 +146,7 @@ class UserLoginAPIView(APIView):
         input_serializer = self.UserLoginInputSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         try:
-            login_details, refresh_token = user_login(
+            login_details, refresh_token, access_token = user_login(
                 **input_serializer.validated_data
             )
         except DRFValidationError as e:
@@ -180,7 +180,15 @@ class UserLoginAPIView(APIView):
             max_age=settings.REFRESH_COOKIE_MAX_AGE,
             httponly=True,
             samesite="none",
-            secure=False
+            secure=True
+        )
+        response.set_cookie(
+            "access_token",
+            access_token,
+            max_age=settings.ACCESS_COOKIE_MAX_AGE,
+            httponly=True,
+            samesite="none",
+            secure=True
         )
         return response
 
@@ -282,14 +290,22 @@ class RotateAccessTokenAPIView(APIView):
         if refresh_token is not None:
             refresh = RefreshToken(refresh_token)
             access_token = str(refresh.access_token)
-            return Response(
+            response = Response(
                 {
                     "success": True,
-                    "message": "Token refreshed successfully.",
-                    "data": {"access_token": access_token},
+                    "message": "Token refreshed successfully."
                 },
                 status=status.HTTP_200_OK
             )
+            response.set_cookie(
+                "access_token",
+                access_token,
+                max_age=settings.ACCESS_COOKIE_MAX_AGE,
+                httponly=True,
+                samesite="none",
+                secure=True
+            )
+            return response
         return Response(
             {
                 "success": False,

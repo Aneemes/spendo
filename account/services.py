@@ -89,8 +89,7 @@ def user_login(
     class UserLoginDetails:
         full_name: str
         username: str
-        access_token: str
-    
+
     try:
         user = CustomUser.objects.get(email=email.lower())
     except CustomUser.DoesNotExist:
@@ -111,10 +110,10 @@ def user_login(
     refresh_token = str(token)
 
     login_details = UserLoginDetails(
-        full_name, username, access_token
+        full_name, username
     )
 
-    return login_details, refresh_token
+    return login_details, refresh_token, access_token
 
 @transaction.atomic
 def send_forgot_password_email(
