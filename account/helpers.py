@@ -24,10 +24,6 @@ def check_if_email_is_taken(*, email: str) -> bool:
         return False
     return True
 
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
-from django.conf import settings
 
 def send_reset_password_link(*, reset_link: str, receiver_email: str, user: CustomUser) -> bool:
     """
@@ -55,14 +51,14 @@ def send_reset_password_link(*, reset_link: str, receiver_email: str, user: Cust
 
     try:
         # Send the email
-        send_mail(
-            subject,
-            plain_message,
-            from_email,
-            [receiver_email],
-            html_message=html_message,
-            fail_silently=False,
-        )
+        # send_mail(
+        #     subject,
+        #     plain_message,
+        #     from_email,
+        #     [receiver_email],
+        #     html_message=html_message,
+        #     fail_silently=False,
+        # )
         return True
     except Exception as e:
         # Log or handle the error
@@ -114,14 +110,14 @@ def send_email_confirmation(user: CustomUser, email: str, token: str):
 
     try:
         # Use Django's send_mail to send the email
-        send_mail(
-            subject,
-            plain_message,
-            from_email,
-            [email],
-            html_message=html_message,
-            fail_silently=False,
-        )
+        # send_mail(
+        #     subject,
+        #     plain_message,
+        #     from_email,
+        #     [email],
+        #     html_message=html_message,
+        #     fail_silently=False,
+        # )
         return True
     except Exception as e:
         # Log or handle errors in email sending

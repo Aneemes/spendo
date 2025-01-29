@@ -144,7 +144,7 @@ def send_forgot_password_email(
 
     username = user.username
 
-    reset_link = f"http://127.0.0.1:8000/auth/reset-password/{username}/{token}"
+    reset_link = f"https://aneemes.pythonanywhere.com/auth/reset-password/{username}/{token}"
     email = send_reset_password_link(reset_link=reset_link, receiver_email=email, user=user)
     if email is True:
         return True

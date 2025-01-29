@@ -1,9 +1,10 @@
-from django.shortcuts import render
 from django.db import transaction
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.shortcuts import render, redirect
+
 from rest_framework.views import APIView
 from rest_framework import serializers, status
 from rest_framework.response import Response
-from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import IsAuthenticated
 
@@ -12,6 +13,10 @@ from .services import (
     create_income_category, update_income_category, delete_income_category
 )
 from .selectors import fetch_expense_categories, fetch_expense_category_detail, fetch_income_categories, fetch_income_category_detail
+
+
+def home(request):
+    return render(request, "home.html")
 
 class CreateExpenseCategoryAPIview(APIView):
     """

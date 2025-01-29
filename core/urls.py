@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    home,
     CreateExpenseCategoryAPIview,
     ListExpenseCategoryAPIView,
     UpdateExpenseCategoryAPIview,
@@ -16,6 +17,7 @@ from .views import (
 app_name = "core"
 
 urlpatterns = [
+    path("", home, name='home'),
     # for expense
     path("expense-category/create/", CreateExpenseCategoryAPIview.as_view(), name="create-expense-category"),
     path("expense-category/list/", ListExpenseCategoryAPIView.as_view(), name="list-expense-category"),
