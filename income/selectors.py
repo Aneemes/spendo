@@ -1,6 +1,7 @@
 from uuid import UUID
 from typing import Dict
 from datetime import datetime, timedelta
+from django.utils import timezone
 
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from account.models import CustomUser
@@ -80,7 +81,7 @@ def get_user_income_details(*, user: CustomUser, income_uid: UUID) -> Dict:
     """
 
     try:
-        income_instance = user.income_set.get(uid=income_uid)
+        income_instance = user.income.get(uid=income_uid)
     except Income.DoesNotExist:
         raise DRFValidationError(detail="Income not found.")
     income_details = {
@@ -89,12 +90,11 @@ def get_user_income_details(*, user: CustomUser, income_uid: UUID) -> Dict:
         "description": income_instance.description,
         "date": income_instance.date,
         "amount": income_instance.amount,
-        "category": income_instance.category.uid,
+        "category": income_instance.category.uid if income_instance.category else None,
         "category_title": income_instance.category.title,
         "color_code": income_instance.category.color_code
     }
     return income_details
-
 
 def get_user_income_list(
     *, user: CustomUser, 
@@ -127,56 +127,45 @@ def get_user_income_list(
     Raises:
         DRFValidationError: If the date format is invalid or if an invalid date_filter value is provided.
     """
-    # Start with all the user's income
-    income_list = user.income_set.select_related('category')
+    income_list = user.income.select_related('category')
 
-    # Filter by title if provided
     if title:
-        income_list = income_list.filter(title__icontains=title)
+        income_list = income_list.filter(title__icontains=title).order_by('-date')
 
-    # Date range filter
+    date_filters = {
+        "today": datetime.today().date(),
+        "yesterday": (datetime.today() - timedelta(days=1)).date(),
+        "last_7_days": datetime.today() - timedelta(days=7),
+        "last_15_days": datetime.today() - timedelta(days=15),
+        "last_30_days": datetime.today() - timedelta(days=30),
+        "last_90_days": datetime.today() - timedelta(days=90),
+        "last_365_days": datetime.today() - timedelta(days=365),
+    }
+
     if start_date:
         try:
-            start_date = datetime.strptime(start_date, "%Y-%m-%d")  # Ensure the date format is YYYY-MM-DD
-            income_list = income_list.filter(date_gte=start_date)
+            start_date = datetime.strptime(start_date, "%Y-%m-%d")
+            income_list = income_list.filter(date__gte=start_date)
         except ValueError:
             raise DRFValidationError(detail="Invalid start_date format. Expected YYYY-MM-DD.")
     
     if end_date:
         try:
-            end_date = datetime.strptime(end_date, "%Y-%m-%d")  # Ensure the date format is YYYY-MM-DD
-            income_list = income_list.filter(date_lte=end_date)
+            end_date = datetime.strptime(end_date, "%Y-%m-%d")
+            income_list = income_list.filter(date__lte=end_date)
         except ValueError:
             raise DRFValidationError(detail="Invalid end_date format. Expected YYYY-MM-DD.")
 
-    # Handle the predefined date filters
-    # temporary shit will clean this up later and same cleanup required for expense list
     if date_filter:
-        today = datetime.today()
-        if date_filter == "today":
-            income_list = income_list.filter(date=today.date())
-        elif date_filter == "yesterday":
-            yesterday = today - timedelta(days=1)
-            income_list = income_list.filter(date=yesterday.date())
-        elif date_filter == "last_7_days":
-            seven_days_ago = today - timedelta(days=7)
-            income_list = income_list.filter(date=seven_days_ago)
-        elif date_filter == "last_15_days":
-            fifteen_days_ago = today - timedelta(days=15)
-            income_list = income_list.filter(date=fifteen_days_ago)
-        elif date_filter == "last_30_days":
-            thirty_days_ago = today - timedelta(days=30)
-            income_list = income_list.filter(date=thirty_days_ago)
-        elif date_filter == "last_90_days":
-            ninety_days_ago = today - timedelta(days=90)
-            income_list = income_list.filter(date=ninety_days_ago)
-        elif date_filter == "last_365_days":
-            one_year_ago = today - timedelta(days=365)
-            income_list = income_list.filter(date=one_year_ago)
+        if date_filter in date_filters:
+            filter_date = date_filters[date_filter]
+            if isinstance(filter_date, datetime):
+                income_list = income_list.filter(date__gte=filter_date)
+            else:
+                income_list = income_list.filter(date__date=filter_date)
         else:
             raise DRFValidationError(detail="Invalid date_filter value. Valid options are 'today', 'yesterday', 'last_7_days', 'last_15_days', 'last_30_days', 'last_90_days', 'last_365_days'.")
 
-    # Filter by category if provided
     if category_uid:
         income_list = income_list.filter(category__uid=category_uid)
 

@@ -40,6 +40,8 @@ class CreateExpenseAPIView(APIView):
         description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
         amount = serializers.DecimalField(required=True, max_digits=10, decimal_places=2)
         category = serializers.UUIDField(required=True)
+        wallet = serializers.UUIDField(required=True)
+        date = serializers.DateField(required=False)
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):
@@ -114,6 +116,8 @@ class UpdateExpenseAPIView(APIView):
         description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
         amount = serializers.DecimalField(required=False, max_digits=10, decimal_places=2)
         category = serializers.UUIDField(required=False, allow_null=True)
+        wallet = serializers.UUIDField(required=False)
+        date = serializers.DateField(required=False)
 
         def validate_category(self, value):
             if value == "":

@@ -1,8 +1,11 @@
 from decimal import Decimal
 from uuid import UUID
 from datetime import date
+from django.utils import timezone
 
 from account.models import CustomUser
+from wallet.selectors import get_wallet_from_uid_and_user
+
 from .models import Income, IncomeCategory
 from .selectors import get_income_category_from_category_uid_and_user, get_income_from_user_and_income_uid
 
@@ -16,9 +19,10 @@ def create_income(
     *,
     title: str = None,
     amount: Decimal,
-    date: date,
+    date: date = None,
     description: str = None,
-    category_uid: UUID = None,
+    category: UUID = None,
+    wallet: UUID,
     user: CustomUser,
 ) -> Income:
     """
@@ -42,10 +46,17 @@ def create_income(
         DjangoValidationError: If the income data fails model validation.
     """
     income_category_instance = None
-    if category_uid:
-        income_category_instance = get_income_category_from_category_uid_and_user(category_uid=category_uid, user=user)
+    if category:
+        income_category_instance = get_income_category_from_category_uid_and_user(category_uid=category, user=user)
         if income_category_instance is None:
             raise DRFValidationError(detail="Category not found.")
+    
+    wallet_instance = get_wallet_from_uid_and_user(wallet_uid=wallet, user=user)
+    if wallet_instance is None:
+        raise DRFValidationError(detail="Wallet not found.")
+    
+    if date is None:
+        date = timezone.now().date()
 
     income_instance = Income(
         title=title.strip() if title and title.strip() else None,
@@ -53,6 +64,7 @@ def create_income(
         date=date,
         description=description.strip() if description and description.strip() else None,
         category=income_category_instance,
+        wallet=wallet_instance,
         user=user,
     )
 
@@ -60,7 +72,7 @@ def create_income(
         income_instance.full_clean()
         income_instance.save()
     except DjangoValidationError as e:
-        raise DjangoValidationError(detail=e.messages[0])
+        raise DjangoValidationError(message=e.messages)
 
     return income_instance
 
@@ -73,7 +85,8 @@ def update_income(
     amount: Decimal,
     date: date,
     description: str = None,
-    category_uid: UUID = None,
+    category: UUID = None,
+    wallet: UUID
 ) -> None:
     """
     Updates an existing income record for a user.
@@ -99,8 +112,8 @@ def update_income(
         raise DRFValidationError(detail="Income instance not found.")
 
     # Fetch the category instance if a category UID is provided
-    if category_uid:
-        income_category_instance = get_income_category_from_category_uid_and_user(category_uid=category_uid, user=user)
+    if category:
+        income_category_instance = get_income_category_from_category_uid_and_user(category_uid=category, user=user)
         if not income_category_instance:
             raise DRFValidationError(detail="Category not found.")
         income_instance.category = income_category_instance
@@ -109,8 +122,17 @@ def update_income(
     if title:
         income_instance.title = title.strip() if title.strip() else None
 
+    if date:
+        income_instance.date = date
+    else:
+        income_instance.date = timezone.now().date()
+
+    wallet_instance = get_wallet_from_uid_and_user(wallet_uid=wallet, user=user)
+    if wallet_instance is None:
+        raise DRFValidationError(detail="Wallet not found.")
+
     income_instance.amount = amount
-    income_instance.date = date
+    income_instance.wallet = wallet_instance
 
     if description:
         income_instance.description = description.strip() if description.strip() else None

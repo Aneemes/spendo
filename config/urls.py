@@ -28,7 +28,8 @@ urlpatterns = [
     path('', include("core.urls")),
     path('auth/', include("account.urls")),
     path('expense/', include("expense.urls")),
-    path('income/', include("income.urls"))
+    path('income/', include("income.urls")),
+    path('wallet/', include("wallet.urls")),
 ]
 
 urlpatterns += [

@@ -2,10 +2,19 @@ from django.db import transaction
 from decimal import Decimal
 from uuid import UUID
 from typing import List
+from django.utils import timezone
+
+from rest_framework.exceptions import ValidationError as DRFValidationError
+
+from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ValidationError as DjangoValidationError
+
 from core.models import ExpenseCategory
 from account.models import CustomUser
-from django.core.exceptions import ValidationError as DjangoValidationError
-from django.core.exceptions import ObjectDoesNotExist
+from wallet.selectors import get_wallet_from_uid_and_user
+
+from .models import Expense
+from .selectors import get_expense_category_from_category_uid_and_user
 
 @transaction.atomic
 def create_user_expense(
@@ -14,6 +23,8 @@ def create_user_expense(
     description: str = None,
     amount: Decimal,
     category: UUID,
+    wallet: UUID,
+    date: str = None,
     user: CustomUser
 ) -> bool:
     """
@@ -32,17 +43,38 @@ def create_user_expense(
     Raises:
         DjangoValidationError: If the specified category is not found for the user.
     """
-    try:
-        category_instance = ExpenseCategory.objects.get(uid=category, user=user)
-    except ExpenseCategory.DoesNotExist:
-        raise DjangoValidationError("Category not found")
-    user_expense = category_instance.expense_set.create(
+    # this wont work gotta fix it later
+    expense_category_instance = None
+    if category:
+        expense_category_instance = get_expense_category_from_category_uid_and_user(category_uid=category, user=user)
+        if expense_category_instance is None:
+            raise DRFValidationError(detail="Category not found.")
+    
+    wallet_instance = get_wallet_from_uid_and_user(wallet_uid=wallet, user=user)
+    if wallet_instance is None:
+        raise DRFValidationError(detail="Wallet not found.")
+    
+    if date is None:
+        date = timezone.now().date()
+
+    expense_instance = Expense(
         title=title,
         description=description,
         amount=amount,
+        category=expense_category_instance,
+        wallet=wallet_instance,
+        date=date,
         user=user
     )
+    
+    try:
+        expense_instance.full_clean()
+        expense_instance.save()
+    except DjangoValidationError as e:
+        raise DjangoValidationError(message=e.messages)
+    
     return True
+
 
 
 @transaction.atomic
@@ -53,7 +85,9 @@ def update_user_expense(
     amount: Decimal = None,
     category: UUID = None,
     user: CustomUser,
-    expense_uid: UUID
+    expense_uid: UUID,
+    wallet: UUID,
+    date: str = None
 ) -> bool:
     """
     Updates an existing expense for a user with the provided details.
@@ -69,28 +103,42 @@ def update_user_expense(
     Returns:
         bool: True if the expense was successfully updated.
     """
-    try:
-        expense_instance = user.expense_set.get(uid=expense_uid)
-    except ObjectDoesNotExist:
+    expense_instance = get_expense_from_user_and_expense_uid(user=user, expense_uid=expense_uid)
+    if not expense_instance:
         raise DjangoValidationError("Expense not found.")
-    if title is not None:
+    
+    if category:
+        expense_category_instance = get_expense_category_from_category_uid_and_user(category_uid=category, user=user)
+        if not expense_category_instance:
+            raise DRFValidationError(detail="Category not found.")
+        expense_instance.category = expense_category_instance
+    
+    if title:
         expense_instance.title = title
-    if description is not None:
+    
+    if description:
         expense_instance.description = description
-    if amount is not None:
+    
+    if amount:
         expense_instance.amount = amount
-    if category is not None:
-        category_instance = ExpenseCategory.objects.get(uid=category, user=user)
-        if category_instance is None:
-            raise DjangoValidationError("Category not found")
-        expense_instance.category = category_instance
-
+    
+    if date:
+        expense_instance.date = date
+    else:
+        expense_instance.date = timezone.now().date()
+    
+    wallet_instance = get_wallet_from_uid_and_user(wallet_uid=wallet, user=user)
+    if not wallet_instance:
+        raise DRFValidationError(detail="Wallet not found.")
+    
+    expense_instance.wallet = wallet_instance
+    
     try:
         expense_instance.full_clean()
+        expense_instance.save()
     except DjangoValidationError as e:
-        raise DjangoValidationError(e.messages[0])
-
-    expense_instance.save()
+        raise DjangoValidationError(message=e.messages)
+    
     return True
 
 @transaction.atomic

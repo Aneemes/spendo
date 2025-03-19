@@ -53,7 +53,7 @@ def user_signup(
         full_name=full_name,
         username=username,
         email=email.lower(),
-        is_active=False
+        is_active=True # Change to False if email verification is required
     )
 
     try:
@@ -89,6 +89,8 @@ def user_login(
     class UserLoginDetails:
         full_name: str
         username: str
+        access_token: str
+        refresh_token: str
 
     try:
         user = CustomUser.objects.get(email=email.lower())
@@ -110,10 +112,10 @@ def user_login(
     refresh_token = str(token)
 
     login_details = UserLoginDetails(
-        full_name, username
+        full_name, username, access_token, refresh_token
     )
 
-    return login_details, refresh_token, access_token
+    return login_details
 
 @transaction.atomic
 def send_forgot_password_email(

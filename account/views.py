@@ -122,6 +122,7 @@ class UserLoginAPIView(APIView):
         full_name = serializers.CharField(read_only=True)
         username = serializers.CharField(read_only=True)
         access_token = serializers.CharField(read_only=True)
+        refresh_token = serializers.CharField(read_only=True)
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):
@@ -146,7 +147,7 @@ class UserLoginAPIView(APIView):
         input_serializer = self.UserLoginInputSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         try:
-            login_details, refresh_token, access_token = user_login(
+            login_details = user_login(
                 **input_serializer.validated_data
             )
         except DRFValidationError as e:
@@ -173,22 +174,6 @@ class UserLoginAPIView(APIView):
                 "data": output_serializer.data
             },
             status=status.HTTP_200_OK,
-        )
-        response.set_cookie(
-            "refresh_token",
-            refresh_token,
-            max_age=settings.REFRESH_COOKIE_MAX_AGE,
-            httponly=True,
-            samesite="none",
-            secure=True
-        )
-        response.set_cookie(
-            "access_token",
-            access_token,
-            max_age=settings.ACCESS_COOKIE_MAX_AGE,
-            httponly=True,
-            samesite="none",
-            secure=True
         )
         return response
 

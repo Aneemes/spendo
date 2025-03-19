@@ -41,9 +41,10 @@ class CreateIncomeAPIView(APIView):
     class CreateIncomeInputSerializer(serializers.Serializer):
         title = serializers.CharField(required=False, allow_null=True, allow_blank=True)
         amount = serializers.DecimalField(required=True, max_digits=10, decimal_places=2)
-        date = serializers.DateField(required=True)
+        date = serializers.DateField(required=False)
         description = serializers.CharField(required=False)
-        category_uid = serializers.UUIDField(required=False)
+        category = serializers.UUIDField(required=False)
+        wallet = serializers.UUIDField(required=True)
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):
@@ -59,7 +60,7 @@ class CreateIncomeAPIView(APIView):
             return Response(
                 {
                     'success': False,
-                    'message': e.message
+                    'message': e.messages
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -110,7 +111,8 @@ class UpdateIncomeAPIView(APIView):
         amount = serializers.DecimalField(required=True, max_digits=10, decimal_places=2)
         date = serializers.DateField(required=True)
         description = serializers.CharField(required=False)
-        category_uid = serializers.UUIDField(required=False)
+        category = serializers.UUIDField(required=False)
+        wallet = serializers.UUIDField(required=True)
 
     @transaction.atomic
     def put(self, request, *args, **kwargs):

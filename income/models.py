@@ -1,4 +1,5 @@
-from django.db import models
+from django.utils import timezone
+from django.db import models, transaction
 from core.models_mixin import IdentifierTimeStampAbstractModel
 from core.models import IncomeCategory
 
@@ -23,10 +24,43 @@ class Income(IdentifierTimeStampAbstractModel):
     """
     title = models.CharField(max_length=255, null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    date = models.DateField()
+    date = models.DateField(default=timezone.now)
     description = models.TextField(blank=True, null=True)
     category = models.ForeignKey("core.IncomeCategory", on_delete=models.SET_NULL, null=True, blank=True)
     user = models.ForeignKey("account.CustomUser", on_delete=models.CASCADE, related_name='income')
+    wallet = models.ForeignKey("wallet.Wallet", on_delete=models.SET_NULL, null=True, related_name='income')
+
+    # this should theoretically work but idk lmao
+    def clean(self):
+        if self.pk:
+            # Existing instance, handle updates
+            previous = Income.objects.get(pk=self.pk)
+            if previous.wallet and previous.wallet != self.wallet:
+                # Revert the amount from the previous wallet
+                previous.wallet.balance -= previous.amount
+                previous.wallet.save()
+            if previous.wallet == self.wallet:
+                # Adjust the balance if the amount has changed
+                self.wallet.balance += self.amount - previous.amount
+            else:
+                # Add the amount to the new wallet
+                if self.wallet:
+                    self.wallet.balance += self.amount
+            if previous.wallet and previous.wallet != self.wallet:
+                previous.wallet.save()
+        else:
+            # New instance, handle creation
+            if self.wallet:
+                self.wallet.balance += self.amount
+                self.wallet.save()
+
+    # this should work too idk lmao
+    @transaction.atomic
+    def delete(self, *args, **kwargs):
+        if self.wallet:
+            self.wallet.balance -= self.amount
+            self.wallet.save()
+        super().delete(*args, **kwargs)
 
     class Meta:
         db_table = "income"

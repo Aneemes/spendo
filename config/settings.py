@@ -29,7 +29,7 @@ SECRET_KEY = config("SECRET_KEY")
 
 DEBUG = config("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", "").split(",")
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="127.0.0.1,localhost").split(",")
 
 # Application definition
 
@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'core',
     'expense',
     'income',
+    'wallet',
 
     # third-party apps
     'rest_framework',
