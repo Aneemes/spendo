@@ -1,5 +1,6 @@
 from django.utils import timezone
 from django.db import models, transaction
+
 from core.models_mixin import IdentifierTimeStampAbstractModel
 from core.models import IncomeCategory
 
@@ -30,36 +31,35 @@ class Income(IdentifierTimeStampAbstractModel):
     user = models.ForeignKey("account.CustomUser", on_delete=models.CASCADE, related_name='income')
     wallet = models.ForeignKey("wallet.Wallet", on_delete=models.SET_NULL, null=True, related_name='income')
 
-    # this should theoretically work but idk lmao
     def clean(self):
-        if self.pk:
-            # Existing instance, handle updates
-            previous = Income.objects.get(pk=self.pk)
-            if previous.wallet and previous.wallet != self.wallet:
-                # Revert the amount from the previous wallet
-                previous.wallet.balance -= previous.amount
-                previous.wallet.save()
-            if previous.wallet == self.wallet:
-                # Adjust the balance if the amount has changed
-                self.wallet.balance += self.amount - previous.amount
+        with transaction.atomic():
+            if self.pk:
+                # Existing instance, handle updates
+                previous = Income.objects.get(pk=self.pk)
+                
+                # Handle wallet change
+                if previous.wallet and previous.wallet != self.wallet:
+                    # Revert amount from previous wallet
+                    previous.wallet.withdraw(previous.amount)
+                    
+                    # Add to new wallet if it exists
+                    if self.wallet:
+                        self.wallet.deposit(self.amount)
+                
+                # Handle amount change for same wallet
+                elif previous.wallet == self.wallet and self.wallet and previous.amount != self.amount:
+                    # Adjust the difference
+                    difference = self.amount - previous.amount
+                    self.wallet.deposit(difference)
             else:
-                # Add the amount to the new wallet
+                # New instance, add to wallet
                 if self.wallet:
-                    self.wallet.balance += self.amount
-            if previous.wallet and previous.wallet != self.wallet:
-                previous.wallet.save()
-        else:
-            # New instance, handle creation
-            if self.wallet:
-                self.wallet.balance += self.amount
-                self.wallet.save()
+                    self.wallet.deposit(self.amount)
 
-    # this should work too idk lmao
     @transaction.atomic
     def delete(self, *args, **kwargs):
         if self.wallet:
-            self.wallet.balance -= self.amount
-            self.wallet.save()
+            self.wallet.withdraw(self.amount)
         super().delete(*args, **kwargs)
 
     class Meta:

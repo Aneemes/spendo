@@ -132,3 +132,23 @@ def get_expense_category_from_category_uid_and_user(*, category_uid: UUID, user:
     except ExpenseCategory.DoesNotExist:
         raise DjangoValidationError("Category not found")
     return category_instance
+
+def get_expense_from_user_and_expense_uid(*, user: CustomUser, expense_uid: UUID):
+    """
+    Retrieve an expense instance based on the expense UID and user.
+
+    Args:
+        user (CustomUser): The user who owns the expense.
+        expense_uid (UUID): The unique identifier of the expense.
+
+    Returns:
+        Expense: The expense instance.
+
+    Raises:
+        DjangoValidationError: If the expense with the given UID is not found.
+    """
+    try:
+        expense_instance = user.expense.get(uid=expense_uid)
+    except Expense.DoesNotExist:
+        raise DjangoValidationError("Expense not found")
+    return expense_instance

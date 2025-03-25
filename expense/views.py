@@ -43,13 +43,19 @@ class CreateExpenseAPIView(APIView):
         wallet = serializers.UUIDField(required=True)
         date = serializers.DateField(required=False)
 
+    class CreateExpenseOutputSerializer(serializers.Serializer):
+        uid = serializers.UUIDField(read_only=True)
+        title = serializers.CharField(read_only=True)
+        description = serializers.CharField(read_only=True)
+        amount = serializers.DecimalField(read_only=True, max_digits=10, decimal_places=2)
+
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         input_serializer = self.CreateExpenseAPIView(data=request.data)
         input_serializer.is_valid(raise_exception=True)
 
         try:
-            expense_creation_status = create_user_expense(
+            expense = create_user_expense(
                 **input_serializer.validated_data,
                 user=request.user
             )
@@ -69,10 +75,12 @@ class CreateExpenseAPIView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
+        output_serializer = self.CreateExpenseOutputSerializer(expense)
         return Response(
             {
                 "success": True,
-                "message": "Expense created successfully"
+                "message": "Expense created successfully",
+                "data": output_serializer.data
             },
             status=status.HTTP_201_CREATED
         )

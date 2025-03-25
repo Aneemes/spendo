@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.db import models, transaction
 
 from django.db import models, transaction
 from core.models_mixin import IdentifierTimeStampAbstractModel
@@ -19,7 +20,6 @@ class Expense(IdentifierTimeStampAbstractModel):
     Methods:
         __str__(): Returns a string representation of the expense, combining amount and category title.
     """
-    
     title = models.CharField(max_length=255, null=True, blank=True)
     description = models.TextField(blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -29,37 +29,34 @@ class Expense(IdentifierTimeStampAbstractModel):
     wallet = models.ForeignKey("wallet.Wallet", on_delete=models.SET_NULL, null=True, related_name='expense')
 
     def clean(self):
-        if self.pk:
-            # Existing instance, handle updates
-            previous = Expense.objects.get(pk=self.pk)
-            if previous.wallet and previous.wallet != self.wallet:
-                # Revert the amount from the previous wallet
-                previous.wallet.balance += previous.amount
-                previous.wallet.save()
-            if previous.wallet == self.wallet:
-                # Adjust the balance if the amount has changed
-                self.wallet.balance -= self.amount - previous.amount
+        with transaction.atomic():
+            if self.pk:
+                # Existing instance, handle updates
+                previous = Expense.objects.get(pk=self.pk)
+                
+                # Handle wallet change
+                if previous.wallet and previous.wallet != self.wallet:
+                    # Revert amount to previous wallet
+                    previous.wallet.deposit(previous.amount)
+                    
+                    # Withdraw from new wallet if it exists
+                    if self.wallet:
+                        self.wallet.withdraw(self.amount)
+                
+                # Handle amount change for same wallet
+                elif previous.wallet == self.wallet and self.wallet:
+                    # Calculate the difference
+                    difference = self.amount - previous.amount
+                    self.wallet.withdraw(difference)
             else:
-                # Subtract the amount from the new wallet
+                # New instance, withdraw from wallet
                 if self.wallet:
-                    self.wallet.balance -= self.amount
-            if previous.wallet and previous.wallet != self.wallet:
-                previous.wallet.save()
-        else:
-            # New instance, handle creation
-            if self.wallet:
-                self.wallet.balance -= self.amount
-                self.wallet.save()
-
-    def save(self, *args, **kwargs):
-        self.full_clean()  # This will call the clean method
-        super().save(*args, **kwargs)
+                    self.wallet.withdraw(self.amount)
 
     @transaction.atomic
     def delete(self, *args, **kwargs):
         if self.wallet:
-            self.wallet.balance += self.amount
-            self.wallet.save()
+            self.wallet.deposit(self.amount)
         super().delete(*args, **kwargs)
 
     class Meta:

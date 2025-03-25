@@ -18,7 +18,7 @@ class ExpenseCategory(IdentifierTimeStampAbstractModel):
         __str__(): Returns the string representation of the expense category, which is the title.
     """
 
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=24)
     description = models.TextField(blank=True, null=True)
     color_code = models.CharField(max_length=10, default="#000000")
     user = models.ForeignKey("account.CustomUser", on_delete=models.CASCADE)
@@ -33,7 +33,7 @@ class ExpenseCategory(IdentifierTimeStampAbstractModel):
         return self.title
 
 class IncomeCategory(IdentifierTimeStampAbstractModel):
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=24)
     description = models.TextField(blank=True, null=True)
     color_code = models.CharField(max_length=10, default="#000000")
     user = models.ForeignKey("account.CustomUser", on_delete=models.CASCADE)

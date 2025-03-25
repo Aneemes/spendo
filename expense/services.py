@@ -14,7 +14,7 @@ from account.models import CustomUser
 from wallet.selectors import get_wallet_from_uid_and_user
 
 from .models import Expense
-from .selectors import get_expense_category_from_category_uid_and_user
+from .selectors import get_expense_category_from_category_uid_and_user, get_expense_from_user_and_expense_uid
 
 @transaction.atomic
 def create_user_expense(
@@ -26,7 +26,7 @@ def create_user_expense(
     wallet: UUID,
     date: str = None,
     user: CustomUser
-) -> bool:
+) -> Expense:
     """
     Creates a new user expense entry in the specified category.
 
@@ -73,8 +73,7 @@ def create_user_expense(
     except DjangoValidationError as e:
         raise DjangoValidationError(message=e.messages)
     
-    return True
-
+    return expense_instance
 
 
 @transaction.atomic
@@ -85,8 +84,8 @@ def update_user_expense(
     amount: Decimal = None,
     category: UUID = None,
     user: CustomUser,
+    wallet: UUID = None,
     expense_uid: UUID,
-    wallet: UUID,
     date: str = None
 ) -> bool:
     """
@@ -124,14 +123,13 @@ def update_user_expense(
     
     if date:
         expense_instance.date = date
-    else:
-        expense_instance.date = timezone.now().date()
+
+    if wallet:
+        wallet_instance = get_wallet_from_uid_and_user(wallet_uid=wallet, user=user)
+        if not wallet_instance:
+            raise DRFValidationError(detail="Wallet not found.")
     
-    wallet_instance = get_wallet_from_uid_and_user(wallet_uid=wallet, user=user)
-    if not wallet_instance:
-        raise DRFValidationError(detail="Wallet not found.")
-    
-    expense_instance.wallet = wallet_instance
+        expense_instance.wallet = wallet_instance
     
     try:
         expense_instance.full_clean()
@@ -161,7 +159,7 @@ def delete_user_expense(
         DjangoValidationError: If the expense with the given UID is not found.
     """
     try:
-        expense_instance = user.expense_set.get(uid=expense_uid)
+        expense_instance = user.expense.get(uid=expense_uid)
     except ObjectDoesNotExist:
         raise DjangoValidationError("Expense not found.")
     expense_instance.delete()

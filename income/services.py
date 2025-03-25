@@ -82,11 +82,11 @@ def update_income(
     user: CustomUser,
     income_uid: UUID,
     title: str = None,
-    amount: Decimal,
-    date: date,
+    amount: Decimal = None,
+    date: date = None,
     description: str = None,
     category: UUID = None,
-    wallet: UUID
+    wallet: UUID = None
 ) -> None:
     """
     Updates an existing income record for a user.
@@ -126,13 +126,17 @@ def update_income(
         income_instance.date = date
     else:
         income_instance.date = timezone.now().date()
+    
+    if wallet:
+        wallet_instance = get_wallet_from_uid_and_user(wallet_uid=wallet, user=user)
+        if wallet_instance is None:
+            raise DRFValidationError(detail="Wallet not found.")
+        
+        income_instance.wallet = wallet_instance
 
-    wallet_instance = get_wallet_from_uid_and_user(wallet_uid=wallet, user=user)
-    if wallet_instance is None:
-        raise DRFValidationError(detail="Wallet not found.")
 
-    income_instance.amount = amount
-    income_instance.wallet = wallet_instance
+    if amount:
+        income_instance.amount = amount
 
     if description:
         income_instance.description = description.strip() if description.strip() else None

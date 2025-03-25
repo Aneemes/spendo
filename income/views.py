@@ -46,6 +46,16 @@ class CreateIncomeAPIView(APIView):
         category = serializers.UUIDField(required=False)
         wallet = serializers.UUIDField(required=True)
 
+    class CreateIncomeOutputSerializer(serializers.Serializer):
+        uid = serializers.UUIDField(read_only=True)
+        title = serializers.CharField(read_only=True)
+        description = serializers.CharField(read_only=True)
+        date = serializers.DateField(read_only=True)
+        amount = serializers.DecimalField(read_only=True, max_digits=10, decimal_places=2)
+        category = serializers.UUIDField(read_only=True)
+        created_at = serializers.DateTimeField(read_only=True)
+        wallet = serializers.UUIDField(read_only=True)
+
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         input_serializer = self.CreateIncomeInputSerializer(data=request.data)
@@ -72,10 +82,12 @@ class CreateIncomeAPIView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
+        output_serializer = self.CreateIncomeOutputSerializer(income)
         return Response(
             {
                 'success': True,
-                'message': 'New income created successfully.'
+                'message': 'New income created successfully.',
+                'data': output_serializer.data
             },
             status=status.HTTP_201_CREATED
         )
@@ -108,14 +120,14 @@ class UpdateIncomeAPIView(APIView):
 
     class UpdateIncomeInputSerializer(serializers.Serializer):
         title = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-        amount = serializers.DecimalField(required=True, max_digits=10, decimal_places=2)
-        date = serializers.DateField(required=True)
+        amount = serializers.DecimalField(required=False, max_digits=10, decimal_places=2)
+        date = serializers.DateField(required=False)
         description = serializers.CharField(required=False)
         category = serializers.UUIDField(required=False)
-        wallet = serializers.UUIDField(required=True)
+        wallet = serializers.UUIDField(required=False)
 
     @transaction.atomic
-    def put(self, request, *args, **kwargs):
+    def patch(self, request, *args, **kwargs):
         input_serializer = self.UpdateIncomeInputSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
 

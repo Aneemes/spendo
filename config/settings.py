@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'expense',
     'income',
     'wallet',
+    'transaction',
 
     # third-party apps
     'rest_framework',
